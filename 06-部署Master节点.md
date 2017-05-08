@@ -19,23 +19,16 @@ kubernetes master 节点包含的组件：
 
 计划后续再介绍部署 LB 的步骤，客户端 (kubectl、kubelet、kube-proxy) 使用 LB 的 VIP 来访问 kube-apiserver，从而实现高可用 master 集群。
 
+master 节点与 node 节点上的 Pods 通过 Pod 网络通信，所以需要在 master 节点上部署 Flannel 网络。
+
 ## 使用的变量
 
 本文档用到的变量定义如下：
 
 ``` bash
 $ export MASTER_IP=10.64.3.7  # 替换为当前部署的 master 机器 IP
-$ # 导入用到的其它全局变量：SERVICE_CIDR、CLUSTER_CIDR、NODE_PORT_RANGE、ETCD_ENDPOINTS
+$ # 导入用到的其它全局变量：SERVICE_CIDR、CLUSTER_CIDR、NODE_PORT_RANGE、ETCD_ENDPOINTS、BOOTSTRAP_TOKEN
 $ source /root/local/bin/environment.sh
-$
-```
-
-## TLS 证书文件
-
-``` bash
-$ sudo mkdir -p /etc/kubernetes/ssl
-$ sudo cp token.csv /etc/kubernetes
-$ sudo cp ca.pem ca-key.pem kubernetes-key.pem kubernetes.pem /etc/kubernetes/ssl
 $
 ```
 
@@ -74,7 +67,82 @@ $ sudo cp -r server/bin/{kube-apiserver,kube-controller-manager,kube-scheduler,k
 $
 ```
 
+## 安装和配置 flanneld
+
+参考 [05-部署Flannel网络.md](./05-部署Flannel网络.md)
+
+## 创建 kubernetes 证书
+
+创建 kubernetes 证书签名请求
+
+``` bash
+$ cat > kubernetes-csr.json <<EOF
+{
+  "CN": "kubernetes",
+  "hosts": [
+    "127.0.0.1",
+    "${MASTER_IP}",
+    "${CLUSTER_KUBERNETES_SVC_IP}",
+    "kubernetes",
+    "kubernetes.default",
+    "kubernetes.default.svc",
+    "kubernetes.default.svc.cluster",
+    "kubernetes.default.svc.cluster.local"
+  ],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "CN",
+      "ST": "BeiJing",
+      "L": "BeiJing",
+      "O": "k8s",
+      "OU": "System"
+    }
+  ]
+}
+EOF
+```
+
++ 如果 hosts 字段不为空则需要指定授权使用该证书的 **IP 或域名列表**，所以上面分别指定了当前部署的 master 节点主机 IP；
++ 还需要添加 kube-apiserver 注册的名为 `kubernetes` 的服务 IP (Service Cluster IP)，一般是 kube-apiserver `--service-cluster-ip-range` 选项值指定的网段的**第一个IP**，如 "10.254.0.1"；
+
+  ``` bash
+  $ kubectl get svc kubernetes
+  NAME         CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+  kubernetes   10.254.0.1   <none>        443/TCP   1d
+  ```
+
+生成 kubernetes 证书和私钥
+
+``` bash
+$ cfssl gencert -ca=/etc/kubernetes/ssl/ca.pem \
+  -ca-key=/etc/kubernetes/ssl/ca-key.pem \
+  -config=/etc/kubernetes/ssl/ca-config.json \
+  -profile=kubernetes kubernetes-csr.json | cfssljson -bare kubernetes
+$ ls kubernetes*
+kubernetes.csr  kubernetes-csr.json  kubernetes-key.pem  kubernetes.pem
+$ sudo mkdir -p /etc/kubernetes/ssl/
+$ sudo mv kubernetes*.pem /etc/kubernetes/ssl/
+$ rm kubernetes.csr  kubernetes-csr.json
+```
+
 ## 配置和启动 kube-apiserver
+
+### 创建 kube-apiserver 使用的客户端 token 文件
+
+kubelet **首次启动**时向 kube-apiserver 发送 TLS Bootstrapping 请求，kube-apiserver 验证 kubelet 请求中的 token 是否与它配置的 token.csv 一致，如果一致则自动为 kubelet生成证书和秘钥。
+
+``` bash
+$ # 导入的 environment.sh 文件定义了 BOOTSTRAP_TOKEN 变量
+$ cat > token.csv <<EOF
+${BOOTSTRAP_TOKEN},kubelet-bootstrap,10001,"system:kubelet-bootstrap"
+EOF
+$ mv token.csv /etc/kubernetes/
+$
+```
 
 ### 创建 kube-apiserver 的 systemd unit 文件
 
@@ -131,7 +199,7 @@ EOF
 + kubelet、kube-proxy、kubectl 部署在其它 Node 节点上，如果通过**安全端口**访问 kube-apiserver，则必须先通过 TLS 证书认证，再通过 RBAC 授权；
 + kube-proxy、kubectl 通过在使用的证书里指定相关的 User、Group 来达到通过 RBAC 授权的目的；
 + 如果使用了 kubelet TLS Boostrap 机制，则不能再指定 `--kubelet-certificate-authority`、`--kubelet-client-certificate` 和 `--kubelet-client-key` 选项，否则后续 kube-apiserver 校验 kubelet 证书时出现 ”x509: certificate signed by unknown authority“ 错误；
-+ `--admission-control` 值必须包含 `ServiceAccount`；
++ `--admission-control` 值必须包含 `ServiceAccount`，否则部署集群插件时会失败；
 + `--bind-address` 不能为 `127.0.0.1`；
 + `--service-cluster-ip-range` 指定 Service Cluster IP 地址段，该地址段不能路由可达；
 + `--service-node-port-range=${NODE_PORT_RANGE}` 指定 NodePort 的端口范围；

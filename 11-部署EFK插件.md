@@ -4,7 +4,7 @@ tags: EFK, fluentd, elasticsearch, kibana
 
 # 部署 EFK 插件
 
-官方文件目录：`cluster/addons/fluentd-elasticsearch`
+官方文件目录：`kubernetes/cluster/addons/fluentd-elasticsearch`
 
 ``` bash
 $ ls *.yaml
@@ -61,7 +61,7 @@ DaemonSet `fluentd-es-v1.22` 只会调度到设置了标签 `beta.kubernetes.io/
 ``` bash
 $ kubectl get nodes
 NAME        STATUS    AGE       VERSION
-10.64.3.7   Ready     1d        v1.6.1
+10.64.3.7   Ready     1d        v1.6.2
 
 $ kubectl label nodes 10.64.3.7 beta.kubernetes.io/fluentd-ds-ready=true
 node "10.64.3.7" labeled
@@ -75,7 +75,7 @@ $ pwd
 $ ls *.yaml
 es-controller.yaml es-rbac.yaml es-service.yaml  fluentd-es-ds.yaml  kibana-controller.yaml  kibana-service.yaml fluentd-es-rbac.yaml
 $ kubectl create -f .
-
+$
 ```
 
 ## 检查执行结果

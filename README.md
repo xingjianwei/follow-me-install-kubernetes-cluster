@@ -2,7 +2,7 @@
 
 ![dashboard-home](./images/dashboard-home.png)
 
-本系列文档介绍使用二进制部署最新 `kubernetes v1.6.1` 集群的所有步骤，而不是使用 `kubeadm` 等自动化方式来部署集群。
+本系列文档介绍使用二进制部署最新 `kubernetes v1.6.2` 集群的所有步骤，而不是使用 `kubeadm` 等自动化方式来部署集群。
 
 在部署的过程中，将详细列出各组件的启动参数，它们的含义和可能遇到的问题。
 
@@ -17,10 +17,10 @@
 ## 步骤列表
 
 1. [组件版本和集群环境](01-组件版本和集群环境.md)
-1. [创建 TLS 证书和秘钥](02-创建TLS证书和秘钥.md)
+1. [创建 CA 证书和秘钥](02-创建CA证书和秘钥.md)
 1. [部署高可用 Etcd 集群](03-部署高可用Etcd集群.md)
 1. [下载和配置 Kubectl 命令行工具](04-部署Kubectl命令行工具.md)
-1. [配置 Kubeconfig 文件](05-配置Kubeconfig文件.md)
+1. [配置 Flannel 网络](05-部署Flannel网络.md)
 1. [部署 Master 节点](06-部署Master节点.md)
 1. [部署 Node 节点](07-部署Node节点.md)
 1. [部署 DNS 插件](08-部署DNS插件.md)
