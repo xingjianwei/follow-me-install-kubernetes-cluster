@@ -4,25 +4,23 @@ tags: etcd
 
 # 部署高可用 etcd 集群
 
-kuberntes 系统使用 etcd 存储所有数据，本文档介绍部署一个三节点高可用 etcd 集群的步骤，这三个节点复用 kubernetes master 机器，分别命名为`etcd-host0`、`etcd-host1`、`etcd-host2`：
+kuberntes 系统使用 etcd 存储所有数据，本文档介绍部署一个三节点高可用 etcd 集群的步骤，这三个节点复用 kubernetes 机器，分别命名为`etcd-host0`、`etcd-host1`、`etcd-host2`：
 
-+ etcd-host0：10.64.3.7
-+ etcd-host1：10.64.3.8
-+ etcd-host2：10.66.3.86
++ etcd-host0：172.16.210.101
++ etcd-host1：172.16.210.102
++ etcd-host2：172.16.210.103
 
 ## 使用的变量
 
 本文档用到的变量定义如下：
 
 ``` bash
-$ export NODE_NAME=etcd-host0 # 当前部署的机器名称(随便定义，只要能区分不同机器即可)
-$ export NODE_IP=10.64.3.7 # 当前部署的机器 IP
-$ export NODE_IPS="10.64.3.7 10.64.3.8 10.66.3.86" # etcd 集群所有机器 IP
-$ # etcd 集群间通信的IP和端口
-$ export ETCD_NODES=etcd-host0=https://10.64.3.7:2380,etcd-host1=https://10.64.3.8:2380,etcd-host2=https://10.66.3.86:2380
-$ # 导入用到的其它全局变量：ETCD_ENDPOINTS、FLANNEL_ETCD_PREFIX、CLUSTER_CIDR
-$ source /root/local/bin/environment.sh
-$
+ export NODE_NAME=etcd-host0 
+ export NODE_IP=172.16.210.101 
+ export NODE_IPS="172.16.210.101 172.16.210.102 172.16.210.103" 
+ export ETCD_NODES=etcd-host0=https://172.16.210.101:2380,etcd-host1=https://172.16.210.102:2380,etcd-host2=https://172.16.210.103:2380
+ source /root/local/bin/environment.sh
+
 ```
 
 ## 下载二进制文件
@@ -30,9 +28,9 @@ $
 到 `https://github.com/coreos/etcd/releases` 页面下载最新版本的二进制文件：
 
 ``` bash
-$ wget https://github.com/coreos/etcd/releases/download/v3.1.6/etcd-v3.1.6-linux-amd64.tar.gz
-$ tar -xvf etcd-v3.1.6-linux-amd64.tar.gz
-$ sudo mv etcd-v3.1.6-linux-amd64/etcd* /root/local/bin
+$ wget https://github.com/coreos/etcd/releases/download/v3.1.7/etcd-v3.1.7-linux-amd64.tar.gz
+$ tar -xvf etcd-v3.1.7-linux-amd64.tar.gz
+$ sudo mv etcd-v3.1.7-linux-amd64/etcd* /root/local/bin
 $
 ```
 
