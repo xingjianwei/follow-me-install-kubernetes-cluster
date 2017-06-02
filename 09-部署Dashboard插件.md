@@ -110,7 +110,18 @@ KubeDNS is running at https://10.64.3.7:6443/api/v1/proxy/namespaces/kube-system
 kubernetes-dashboard is running at https://10.64.3.7:6443/api/v1/proxy/namespaces/kube-system/services/kubernetes-dashboard
 ```
 
-由于 kube-apiserver 开启了 RBAC 授权，而浏览器访问 kube-apiserver 的时候使用的是匿名证书，所以访问安全端口会导致授权失败。这里需要使用**非安全**端口访问 kube-apiserver：
+由于 kube-apiserver 开启了 RBAC 授权，而浏览器访问 kube-apiserver 的时候使用的是匿名证书，所以访问安全端口会导致授权失败。
+
+导入证书
+
+将生成的admin.pem证书转换格式
+
+```
+openssl pkcs12 -export -in admin.pem  -out admin.p12 -inkey admin-key.pem
+```
+将生成的admin.p12证书导入的你的电脑(chrome->设置->高级->管理证书)，导出的时候记住你设置的密码，导入的时候还要用到。
+
+如果不导入证书，需要使用**非安全**端口访问 kube-apiserver：
 
 浏览器访问 URL：`http://10.64.3.7:8080/api/v1/proxy/namespaces/kube-system/services/kubernetes-dashboard`
 
