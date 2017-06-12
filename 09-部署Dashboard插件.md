@@ -117,9 +117,10 @@ kubernetes-dashboard is running at https://10.64.3.7:6443/api/v1/proxy/namespace
 将生成的admin.pem证书转换格式
 
 ```
+cd /etc/kubernetes/ssl
 openssl pkcs12 -export -in admin.pem  -out admin.p12 -inkey admin-key.pem
 ```
-将生成的admin.p12证书导入的你的电脑(chrome->设置->高级->管理证书)，导出的时候记住你设置的密码，导入的时候还要用到。
+将生成的admin.p12证书导入的你的电脑(chrome->设置->高级->管理证书)；macos系统中在`钥匙串访问`中导入项目，导出的时候记住你设置的密码，导入的时候还要用到。
 
 如果不导入证书，需要使用**非安全**端口访问 kube-apiserver：
 
