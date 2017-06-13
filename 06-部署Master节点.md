@@ -158,7 +158,7 @@ ExecStart=/root/local/bin/kube-apiserver \\
   --admission-control=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,ResourceQuota \\
   --advertise-address=${MASTER_IP} \\
   --bind-address=${MASTER_IP} \\
-  --insecure-bind-address=${MASTER_IP} \\
+  --insecure-port=0 \\
   --authorization-mode=RBAC \\
   --runtime-config=rbac.authorization.k8s.io/v1alpha1 \\
   --kubelet-https=true \\
@@ -195,7 +195,8 @@ EOF
 
 + kube-apiserver 1.6 版本开始使用 etcd v3 API 和存储格式；
 + `--authorization-mode=RBAC` 指定在安全端口使用 RBAC 授权模式，拒绝未通过授权的请求；
-+ kube-scheduler、kube-controller-manager 一般和 kube-apiserver 部署在同一台机器上，它们使用**非安全端口**和 kube-apiserver通信;
++ kube-scheduler、kube-controller-manager 一般和 kube-apiserver 部署在同一台机器上，它们使用**安全端口**和 kube-apiserver通信;
++ --insecure-port=0 关闭非安全端口；
 + kubelet、kube-proxy、kubectl 部署在其它 Node 节点上，如果通过**安全端口**访问 kube-apiserver，则必须先通过 TLS 证书认证，再通过 RBAC 授权；
 + kube-proxy、kubectl 通过在使用的证书里指定相关的 User、Group 来达到通过 RBAC 授权的目的；
 + 如果使用了 kubelet TLS Boostrap 机制，则不能再指定 `--kubelet-certificate-authority`、`--kubelet-client-certificate` 和 `--kubelet-client-key` 选项，否则后续 kube-apiserver 校验 kubelet 证书时出现 ”x509: certificate signed by unknown authority“ 错误；
@@ -219,6 +220,87 @@ $
 ```
 
 ## 配置和启动 kube-controller-manager
+### 创建 controller-manager 证书
+
+创建 controller-manager 证书签名请求
+
+``` bash
+$ cat > controller-manager-csr.json <<EOF
+{
+  "CN": "system:kube-controller-manager",
+  "hosts": [
+    "127.0.0.1",
+    "${MASTER_IP}",
+    "${CLUSTER_KUBERNETES_SVC_IP}",
+    "kubernetes",
+    "kubernetes.default",
+    "kubernetes.default.svc",
+    "kubernetes.default.svc.cluster",
+    "kubernetes.default.svc.cluster.local"
+  ],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "CN",
+      "ST": "BeiJing",
+      "L": "BeiJing",
+      "O": "system:kube-controller-manager",
+      "OU": "System"
+    }
+  ]
+}
+EOF
+```
+
++ 如果 hosts 字段不为空则需要指定授权使用该证书的 **IP 或域名列表**，所以上面分别指定了当前部署的 master 节点主机 IP；
++ kube-apiserver将提取CN作为客户端的用户名，这里是system:kube-controller-manager。 kube-apiserver预定义的 RBAC使用的ClusterRoleBindings system:kube-controller-manager将用户system:kube-controller-manager与ClusterRole system:kube-controller-manager绑定。
+
+生成 kubernetes-controller-manager 证书和私钥
+
+``` bash
+$ cfssl gencert -ca=/etc/kubernetes/ssl/ca.pem \
+  -ca-key=/etc/kubernetes/ssl/ca-key.pem \
+  -config=/etc/kubernetes/ssl/ca-config.json \
+  -profile=kubernetes controller-manager-csr.json | cfssljson -bare controller-manager
+$ ls controller-manager*
+controller-manager.csr  controller-manager-csr.json  controller-manager-key.pem  controller-manager.pem
+$ sudo mv controller-manager*.pem /etc/kubernetes/ssl/
+$ rm controller-manager.csr  controller-manager-csr.json
+```
+
+### 创建 kubelet bootstrapping kubeconfig 文件
+
+
+
+``` bash
+cd /etc/kubernetes
+export KUBE_APISERVER="https://${MASTER_IP}:6443"
+$ # 设置集群参数
+$ kubectl config set-cluster kubernetes \
+  --certificate-authority=/etc/kubernetes/ssl/ca.pem \
+  --embed-certs=true \
+  --server=${KUBE_APISERVER} \
+  --kubeconfig=controller-manager.conf
+$ # 设置客户端认证参数
+$ kubectl config set-credentials system:kube-controller-manager \
+  --client-certificate=/etc/kubernetes/ssl/controller-manager.pem \
+  --embed-certs=true \
+  --client-key=/etc/kubernetes/ssl/controller-manager-key.pem \
+  --kubeconfig=controller-manager.conf
+$ # 设置上下文参数
+$ kubectl config set-context system:kube-controller-manager@kubernetes \
+  --cluster=kubernetes \
+  --user=system:kube-controller-manager \
+  --kubeconfig=controller-manager.conf
+$ # 设置默认上下文
+$ kubectl config use-context system:kube-controller-manager@kubernetes --kubeconfig=controller-manager.conf
+
+```
+
+controller-manager.conf 文件生成后将这个文件分发到各个 Master 节点的 /etc/kubernetes 目录下。
 
 ### 创建 kube-controller-manager 的 systemd unit 文件
 
@@ -231,7 +313,9 @@ Documentation=https://github.com/GoogleCloudPlatform/kubernetes
 [Service]
 ExecStart=/root/local/bin/kube-controller-manager \\
   --address=127.0.0.1 \\
-  --master=http://${MASTER_IP}:8080 \\
+  --master=https://${MASTER_IP}:6443 \\
+  --kubeconfig=/etc/kubernetes/controller-manager.conf \\
+  --use-service-account-credentials=true \\
   --allocate-node-cidrs=true \\
   --service-cluster-ip-range=${SERVICE_CIDR} \\
   --cluster-cidr=${CLUSTER_CIDR} \\
@@ -281,6 +365,88 @@ $
 ```
 
 ## 配置和启动 kube-scheduler
+### 创建 kube-scheduler 证书
+
+创建 kube-scheduler 证书签名请求
+
+``` bash
+$ cat > scheduler-csr.json <<EOF
+{
+  "CN": "system:kube-scheduler",
+  "hosts": [
+    "127.0.0.1",
+    "${MASTER_IP}",
+    "${CLUSTER_KUBERNETES_SVC_IP}",
+    "kubernetes",
+    "kubernetes.default",
+    "kubernetes.default.svc",
+    "kubernetes.default.svc.cluster",
+    "kubernetes.default.svc.cluster.local"
+  ],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "CN",
+      "ST": "BeiJing",
+      "L": "BeiJing",
+      "O": "system:kube-scheduler",
+      "OU": "System"
+    }
+  ]
+}
+EOF
+```
+
++ 如果 hosts 字段不为空则需要指定授权使用该证书的 **IP 或域名列表**，所以上面分别指定了当前部署的 master 节点主机 IP；
++ kube-scheduler将提取CN作为客户端的用户名，这里是system:kube-scheduler。 kube-apiserver预定义的RBAC使用的ClusterRoleBindings system:kube-scheduler将用户system:kube-scheduler与ClusterRole system:kube-scheduler绑定。
+
+生成 kubernetes-scheduler 证书和私钥
+
+``` bash
+$ cfssl gencert -ca=/etc/kubernetes/ssl/ca.pem \
+  -ca-key=/etc/kubernetes/ssl/ca-key.pem \
+  -config=/etc/kubernetes/ssl/ca-config.json \
+  -profile=kubernetes scheduler-csr.json | cfssljson -bare scheduler
+$ ls scheduler*
+scheduler.csr  scheduler-csr.json  scheduler-key.pem  scheduler.pem
+$ sudo mv scheduler*.pem /etc/kubernetes/ssl/
+$ rm  scheduler.csr   scheduler-csr.json
+```
+
+### 创建 kube-scheduler bootstrapping kubeconfig 文件
+
+
+
+``` bash
+cd /etc/kubernetes
+export KUBE_APISERVER="https://${MASTER_IP}:6443"
+$ # 设置集群参数
+$ kubectl config set-cluster kubernetes \
+  --certificate-authority=/etc/kubernetes/ssl/ca.pem \
+  --embed-certs=true \
+  --server=${KUBE_APISERVER} \
+  --kubeconfig=scheduler.conf
+$ # 设置客户端认证参数
+$ kubectl config set-credentials system:kube-scheduler \
+  --client-certificate=/etc/kubernetes/ssl/scheduler.pem \
+  --embed-certs=true \
+  --client-key=/etc/kubernetes/ssl/scheduler-key.pem \
+  --kubeconfig=scheduler.conf
+$ # 设置上下文参数
+$ kubectl config set-context system:kube-scheduler@kubernetes \
+  --cluster=kubernetes \
+  --user=system:kube-scheduler \
+  --kubeconfig=scheduler.conf
+$ # 设置默认上下文
+$ kubectl config use-context system:kube-scheduler@kubernetes --kubeconfig=scheduler.conf
+
+```
+
+scheduler.conf 文件生成后将这个文件分发到各个 Master 节点的 /etc/kubernetes 目录下。
+
 
 ### 创建 kube-scheduler 的 systemd unit 文件
 
@@ -293,7 +459,8 @@ Documentation=https://github.com/GoogleCloudPlatform/kubernetes
 [Service]
 ExecStart=/root/local/bin/kube-scheduler \\
   --address=127.0.0.1 \\
-  --master=http://${MASTER_IP}:8080 \\
+  --master=https://${MASTER_IP}:6443 \\
+  --kubeconfig=/etc/kubernetes/scheduler.conf \\
   --leader-elect=true \\
   --v=2
 Restart=on-failure
