@@ -52,7 +52,7 @@ Documentation=http://docs.docker.io
 [Service]
 Environment="PATH=/root/local/bin:/bin:/sbin:/usr/bin:/usr/sbin"
 EnvironmentFile=-/run/flannel/docker
-ExecStart=/root/local/bin/dockerd --log-level=error $DOCKER_NETWORK_OPTIONS
+ExecStart=/root/local/bin/dockerd --log-level=error $DOCKER_NETWORK_OPTIONS --registry-mirror=https://4b517mxr.mirror.aliyuncs.com --insecure-registry=beagledata.com:5000
 ExecReload=/bin/kill -s HUP $MAINPID
 Restart=on-failure
 RestartSec=5
@@ -84,6 +84,7 @@ WantedBy=multi-user.target
     $ cat /etc/docker/daemon.json
     {
       "registry-mirrors": ["https://docker.mirrors.ustc.edu.cn", "hub-mirror.c.163.com"],
+      "insecure-registries": ["http://172.16.210.3:5000","http://beagledata.com:5000"]
       "max-concurrent-downloads": 10
     }
     ```

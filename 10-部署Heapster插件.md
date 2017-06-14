@@ -33,7 +33,7 @@ $ diff grafana-deployment.yaml.orig grafana-deployment.yaml
 16c16
 <         image: gcr.io/google_containers/heapster-grafana-amd64:v4.0.2
 ---
->         image: lvanneo/heapster-grafana-amd64:v4.0.2
+>         image: 172.16.210.3:5000/gcr.io/google_containers/heapster-grafana-amd64:v4.0.2
 40,41c40,41
 <           # value: /api/v1/proxy/namespaces/kube-system/services/monitoring-grafana/
 <           value: /
@@ -54,7 +54,7 @@ $ diff heapster-deployment.yaml.orig heapster-deployment.yaml
 16c17
 <         image: gcr.io/google_containers/heapster-amd64:v1.3.0-beta.1
 ---
->         image: lvanneo/heapster-amd64:v1.3.0-beta.1
+>         image: 172.16.210.3:5000/gcr.io/google_containers/heapster-amd64:v1.3.0
 ```
 
 + 使用的是自定义的、名为 heapster 的 ServiceAccount；
@@ -86,7 +86,7 @@ $ diff influxdb-deployment.yaml.orig influxdb-deployment.yaml
 16c16
 <         image: gcr.io/google_containers/heapster-influxdb-amd64:v1.1.1
 ---
->         image: lvanneo/heapster-influxdb-amd64:v1.1.1
+>         image: 172.16.210.3:5000/gcr.io/google_containers/heapster-influxdb-amd64:v1.1.1
 19a20,21
 >         - mountPath: /etc/
 >           name: influxdb-config
@@ -164,9 +164,9 @@ monitoring-influxdb-884893134-3vb6n     1/1       Running   0          11m
     $
     ```
 
-    由于 kube-apiserver 开启了 RBAC 授权，而浏览器访问 kube-apiserver 的时候使用的是匿名证书，所以访问安全端口会导致授权失败。这里需要使用**非安全**端口访问 kube-apiserver：
+    由于 kube-apiserver 开启了 RBAC 授权，而浏览器访问 kube-apiserver 的时候使用的安全端口。这里需要使用**安全**端口访问 kube-apiserver：
 
-    浏览器访问 URL： `http://10.64.3.7:8080/api/v1/proxy/namespaces/kube-system/services/monitoring-grafana`
+    浏览器访问 URL： `https://172.16.210.101:6443/api/v1/proxy/namespaces/kube-system/services/monitoring-grafana`
 
 1. 通过 kubectl proxy 访问：
 
@@ -187,12 +187,12 @@ monitoring-influxdb-884893134-3vb6n     1/1       Running   0          11m
 
 ``` bash
 $ kubectl get svc -n kube-system|grep influxdb
-monitoring-influxdb    10.254.255.183   <nodes>       8086:8670/TCP,8083:8595/TCP   21m
+monitoring-influxdb    10.254.161.7     <nodes>       8086:8882/TCP,8083:8622/TCP   10m
 ```
 
-通过 kube-apiserver 的**非安全端口**访问 influxdb 的 admin UI 界面：
-`http://10.64.3.7:8080/api/v1/proxy/namespaces/kube-system/services/monitoring-influxdb:8083/`
+通过 kube-apiserver 的**安全端口**访问 influxdb 的 admin UI 界面：
+`https://172.16.210.101:6443/api/v1/proxy/namespaces/kube-system/services/monitoring-influxdb:8083`
 
-在页面的 “Connection Settings” 的 Host 中输入 node IP， Port 中输入 8086 映射的 nodePort 如上面的 8670，点击 “Save” 即可：
+在页面的 “Connection Settings” 的 Host 中输入 node IP-172.16.210.101， Port 中输入 8086 映射的 nodePort 如上面的 8882，点击 “Save” 即可：
 
 ![influxdb](./images/influxdb.png)
