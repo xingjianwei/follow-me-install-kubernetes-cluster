@@ -2,6 +2,24 @@
 
 tags: heapster
 
+# 监控集群中的所有容器的方案
+
+kubernetes显然已成为各大公司亲睐的容器编排工具，各种私有云公有云平台基于它构建，那么，我们怎么监控集群中的所有容器呢？目前有三套方案：
+
+* heapster+influxDB
+
+heapster为k8s而生，它从apiserver获取节点信息，每个节点kubelet内含了cAdvisor的功能，暴露出api，heapster通过访问这些端点得到容器监控数据。它支持多种储存方式，大家常用的的就是influxDB。这套方案的缺点是缺乏报警等功能，influxDB的单点问题。因此本方案适合需求是只要实时监控展示。
+
+* heapster+hawkular
+
+本方案解决了上面方案的问题，并且大大提升了监控的高可用性和高性能。比较重量级，适合大型集群的监控。目前hawkular开源不久。功能完善。
+
+* prometheus
+
+prometheus作为一个时间序列数据收集，处理，存储的服务，能够监控的对象必须直接或间接提供prometheus认可的数据模型，通过http api的形式暴露出来。我们知道cAdvisor支持prometheus,同样，包含了cAdivisor的kubelet也支持prometheus。每个节点都暴露了供prometheus调用的api。
+
+prometheus获取监控端点的方式有很多，其中就包括k8s，prometheu会通过调用master的apiserver获取到节点信息，然后去调取每个节点的数据。
+
 # 部署 heapster 插件
 
 到 [heapster release 页面](https://github.com/kubernetes/heapster/releases) 下载最新版本的 heapster

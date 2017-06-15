@@ -7,7 +7,7 @@
 本文档用到的变量定义如下：
 
 ``` bash
-$ export NODE_IP=10.64.3.7 # 当前部署 harbor 的节点 IP
+$ export NODE_IP=172.16.210.101 # 当前部署 harbor 的节点 IP
 $
 ```
 
@@ -16,8 +16,8 @@ $
 从 docker compose [发布页面](https://github.com/docker/compose/releases)下载最新的 `docker-compose` 二进制文件
 
 ``` bash
-$ wget https://github.com/docker/compose/releases/download/1.12.0/docker-compose-Linux-x86_64
-$ mv ~/docker-compose-Linux-x86_64 /root/local/bin/docker-compose
+$ wget https://github.com/docker/compose/releases/download/1.13.0/docker-compose-Linux-x86_64
+$ cp docker-compose-Linux-x86_64 /root/local/bin/docker-compose
 $ chmod a+x  /root/local/bin/docker-compose
 $ export PATH=/root/local/bin:$PATH
 $
@@ -26,7 +26,7 @@ $
 从 harbor [发布页面](https://github.com/vmware/harbor/releases)下载最新的 harbor 离线安装包
 
 ``` bash
-$ wget  --continue https://github.com/vmware/harbor/releases/download/v1.1.0/harbor-offline-installer-v1.1.0.tgz
+$ wget  --continue https://github.com/vmware/harbor/releases/download/v1.1.2/harbor-offline-installer-v1.1.2.tgz
 $ tar -xzvf harbor-offline-installer-v1.1.0.tgz
 $ cd harbor
 $
@@ -37,7 +37,7 @@ $
 导入离线安装包中 harbor 相关的 docker images：
 
 ``` bash
-$ docker load -i harbor.v1.1.0.tar.gz
+$ docker load -i harbor.v1.1.2.tar.gz
 $
 ```
 
@@ -106,6 +106,103 @@ $ diff harbor.cfg.orig harbor.cfg
 > ssl_cert_key = /etc/harbor/ssl/harbor-key.pem
 ```
 
+## 部检查 ceph RGW 节点
+检查是否已经部署RGW节点，如果没有部署，执行以下命令：
+
+``` bash
+$ ceph-deploy rgw create 172.16.210.121 # rgw 默认监听7480端口
+$
+```
+
+## 创建账号 harbor
+
+``` bash
+$ radosgw-admin user create --uid=harbor --display-name="ceph rgw harbor user"
+$
+```
+
+## 创建 harbor 账号的子账号 swift
+
+当前 registry 只支持使用 swift 协议访问 ceph rgw 存储：
+
+``` bash
+$ radosgw-admin subuser create --uid harbor --subuser=harbor:swift --access=full --secret=secretkey --key-type=swift
+$
+```
+
+## 创建 harbor:swift 子账号的 sercret key
+
+``` bash
+$ radosgw-admin key create --subuser=harbor:swift --key-type=swift --gen-secret
+
+{
+    "user_id": "harbor",
+    "display_name": "ceph rgwharbor user",
+    "email": "",
+    "suspended": 0,
+    "max_buckets": 1000,
+    "auid": 0,
+    "subusers": [
+        {
+            "id": "harbor:swift",
+            "permissions": "full-control"
+        }
+    ],
+    "keys": [
+        {
+            "user": "harbor",
+            "access_key": "YXJ9ALNB1334EY8PRDA5",
+            "secret_key": "K9qafZkXFGKmGQExC0uLtEG9gU8LndMZfYUkceku"
+        }
+    ],
+    "swift_keys": [
+        {
+            "user": "harbor:swift",
+            "secret_key": "AkpkGEOUvOVXnBSojib6CI5vL811IcgB1eXPKStC"
+        }
+    ],
+    "caps": [],
+    "op_mask": "read, write, delete",
+    "default_placement": "",
+    "placement_tags": [],
+    "bucket_quota": {
+        "enabled": false,
+        "max_size_kb": -1,
+        "max_objects": -1
+    },
+    "user_quota": {
+        "enabled": false,
+        "max_size_kb": -1,
+        "max_objects": -1
+    },
+        "temp_url_keys": []
+}
+```
+
++ `AkpkGEOUvOVXnBSojib6CI5vL811IcgB1eXPKStC` 为子账号 demo:swift 的 secret key；
+开启ceph的防火墙端口：
+```
+sudo firewall-cmd --zone=public --add-port=7480/tcp --permanent
+sudo firewall-cmd --reload
+```
+## 设置后端swift存储：
+```
+vi common/templates/registry/config.yml
+storage:
+  swift:
+    username: harbor:swift
+    password: AkpkGEOUvOVXnBSojib6CI5vL811IcgB1eXPKStC
+    authurl: http://172.16.210.121:7480/auth/v1
+    tenant: harbor:swift
+    domain: default
+    region: regionOne
+    container: docker_images
+```
+设置完成后：
+```
+docker-compose down -v
+docker-compose up -d
+```
 ## 加载和启动 harbor 镜像
 
 ``` bash
@@ -159,13 +256,13 @@ Creating nginx
 
 ✔ ----Harbor has been installed and started successfully.----
 
-Now you should be able to visit the admin portal at https://10.64.3.7.
+Now you should be able to visit the admin portal at https://172.16.210.101/.
 For more details, please visit https://github.com/vmware/harbor .
 ```
 
 ## 访问管理界面
 
-浏览器访问 `https://${NODE_IP}`，示例的是 `https://10.64.3.7`
+浏览器访问 `https://${NODE_IP}`，示例的是 `https://172.16.210.101/`
 
 用账号 `admin` 和 harbor.cfg 配置文件中的默认密码 `Harbor12345` 登陆系统：
 
@@ -184,24 +281,38 @@ ca_download  config  database  job_logs registry  secretkey
 
 ## docker 客户端登陆
 
-将签署 harbor 证书的 CA 证书拷贝到 `/etc/docker/certs.d/10.64.3.7` 目录下
+将签署 harbor 证书的 CA 证书拷贝到 `/etc/docker/certs.d/172.16.210.101:443` 目录下
 
 ``` bash
-$ sudo mkdir -p /etc/docker/certs.d/10.64.3.7
-$ sudo cp /etc/kubernetes/ssl/ca.pem /etc/docker/certs.d/10.64.3.7/ca.crt
+$ sudo mkdir -p /etc/docker/certs.d/172.16.210.101:443
+$ sudo cp /etc/kubernetes/ssl/ca.pem /etc/docker/certs.d/172.16.210.101:443/ca.crt
 $
 ```
 
 登陆 harbor
 
 ``` bash
-$ docker login 10.64.3.7
+$ docker login 172.16.210.101:443
 Username: admin
 Password:
 ```
 
 认证信息自动保存到 `~/.docker/config.json` 文件。
 
+```
+docker tag nginx:1.7.9  172.16.210.101:443/public/nginx:1.7.9
+docker push  172.16.210.101:443/public/nginx:1.7.9
+```
+ceph界面中能够看到新建的Bucket：docker_images
+
+在ceph中查看：
+```
+$ rados lspools
+default.rgw.buckets.data
+
+$  rados --pool default.rgw.buckets.data ls|grep nginx
+d70f19cb-e129-478e-bbd3-f775807f2070.194099.1_files/docker/registry/v2/repositories/public/nginx/_layers/sha256/e57bbb92de43347221562cd3ea327948c1e4d4e6a6dd86d68571e3d766a79a39/link
+```
 ## 其它操作
 
 下列操作的工作目录均为 解压离线安装文件后 生成的 harbor 目录。
@@ -211,7 +322,7 @@ $ # 停止 harbor
 $ docker-compose down -v
 $ # 修改配置
 $ vim harbor.cfg
-$ # 更修改的配置更新到 docker-compose.yml 文件
+$ # 修改的配置更新到 docker-compose.yml 文件
 [root@tjwq01-sys-bs003007 harbor]# ./prepare
 Clearing the configuration file: ./common/config/ui/app.conf
 Clearing the configuration file: ./common/config/ui/env
