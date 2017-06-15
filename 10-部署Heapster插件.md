@@ -193,6 +193,6 @@ monitoring-influxdb    10.254.161.7     <nodes>       8086:8882/TCP,8083:8622/TC
 通过 kube-apiserver 的**安全端口**访问 influxdb 的 admin UI 界面：
 `https://172.16.210.101:6443/api/v1/proxy/namespaces/kube-system/services/monitoring-influxdb:8083`
 
-在页面的 “Connection Settings” 的 Host 中输入 node IP-172.16.210.101， Port 中输入 8086 映射的 nodePort 如上面的 8882，点击 “Save” 即可：
+在页面的 “Connection Settings” 的 Host 中输入 node IP-172.16.210.101， Port 中输入 8086 映射的 nodePort 如上面的 8882，点击 “Save” 即可。在chrome浏览器中，可能点击确认**加载不安全的脚本**。
 
 ![influxdb](./images/influxdb.png)
