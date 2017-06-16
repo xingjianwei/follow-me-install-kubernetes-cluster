@@ -303,6 +303,7 @@ Password:
 
 在Docker启动时设置参数 "--insecure-registry 172.16.210.101:443"
 
+
 ## 上传和下载镜像
 ```
 docker tag nginx:1.7.9  172.16.210.101:443/public/nginx:1.7.9

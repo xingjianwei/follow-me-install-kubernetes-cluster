@@ -104,7 +104,7 @@ spec:
       restartPolicy: Always
       serviceAccountName: ingress
       containers:
-      - image: traefik
+      - image: 172.16.210.101:443/public/traefik
         name: traefik-ingress-lb
         resources:
           limits:
@@ -170,7 +170,7 @@ kubectl create -f .
 
 访问该地址`http://172.20.0.115:8580/`将可以看到dashboard。
 
-![kubernetes-dashboard](../images/traefik-dashboard.jpg)
+![traefik-dashboard](../images/traefik-dashboard.jpg)
 
 左侧黄色部分部分列出的是所有的rule，右侧绿色部分是所有的backend。
 
