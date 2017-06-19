@@ -281,18 +281,18 @@ ca_download  config  database  job_logs registry  secretkey
 
 ## docker linux客户端登陆
 
-将签署 harbor 证书的 CA 证书拷贝到 `/etc/docker/certs.d/172.16.210.101:443` 目录下
+将签署 harbor 证书的 CA 证书拷贝到 `/etc/docker/certs.d/172.16.210.101` 目录下
 
 ``` bash
-$ sudo mkdir -p /etc/docker/certs.d/172.16.210.101:443
-$ sudo cp /etc/kubernetes/ssl/ca.pem /etc/docker/certs.d/172.16.210.101:443/ca.crt
+$ sudo mkdir -p /etc/docker/certs.d/172.16.210.101
+$ sudo cp /etc/kubernetes/ssl/ca.pem /etc/docker/certs.d/172.16.210.101/ca.crt
 $
 ```
 
 登陆 harbor
 
 ``` bash
-$ docker login 172.16.210.101:443
+$ docker login 172.16.210.101
 Username: admin
 Password:
 ```
@@ -301,13 +301,13 @@ Password:
 
 ## docker macosx客户端登陆
 
-在Docker启动时设置参数 "--insecure-registry 172.16.210.101:443"
+在Docker启动时设置参数 "--insecure-registry 172.16.210.101"
 
 
 ## 上传和下载镜像
 ```
-docker tag nginx:1.7.9  172.16.210.101:443/public/nginx:1.7.9
-docker push  172.16.210.101:443/public/nginx:1.7.9
+docker tag nginx:1.7.9  172.16.210.101/public/nginx:1.7.9
+docker push  172.16.210.101/public/nginx:1.7.9
 ```
 ceph界面中能够看到新建的Bucket：docker_images
 

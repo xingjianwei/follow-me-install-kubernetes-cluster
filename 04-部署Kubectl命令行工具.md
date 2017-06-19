@@ -29,6 +29,10 @@ $
 
 ## 下载 kubectl
 
+`https://storage.googleapis.com/kubernetes-release/release/<VERSION TAG>/bin/<OS>/<ARCH>/kubectl`
+
+`https://storage.googleapis.com/kubernetes-release/release/v1.6.2/bin/darwin/amd64/kubectl`
+
 ``` bash
 $ wget https://dl.k8s.io/v1.6.2/kubernetes-client-linux-amd64.tar.gz
 $ tar -xzvf kubernetes-client-linux-amd64.tar.gz
