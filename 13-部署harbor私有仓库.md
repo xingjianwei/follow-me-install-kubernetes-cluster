@@ -1,4 +1,4 @@
-# 部署 harbor 私有仓库
+# 使用docker-compose部署 harbor 私有仓库
 
 本文档介绍使用 docker-compose 部署 harbor 私有仓库的步骤，你也可以使用 docker 官方的 registry 镜像部署私有仓库([部署 Docker Registry](12-部署Docker-Registry.md))。
 
