@@ -199,6 +199,7 @@ storage:
     container: docker_images
 ```
 设置完成后：
+修改docker-compose.yml文件，去掉80端口的对外开放。（traefik需要用）
 ```
 docker-compose down -v
 docker-compose up -d

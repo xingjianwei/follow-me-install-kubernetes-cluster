@@ -1,15 +1,10 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: nexus
----
 kind: Deployment
 apiVersion: extensions/v1beta1
 metadata:
   labels:
     app: nexus3
   name: nexus3
-  namespace: nexus
+  namespace: default
 spec:
   replicas: 1
   selector:
@@ -22,17 +17,19 @@ spec:
     spec:
       containers:
       - name: nexus3
-        image:  172.16.210.101/public/sonatype/nexus3:3.3.2
+        image: 172.16.210.101/public/docker-nexus3:xjw
+        #command: ["sleep", "600000"]
         ports:
         - containerPort: 8081
           protocol: TCP
         volumeMounts:
         - name: nexus-data
           mountPath: /nexus-data
+          readOnly: false
       volumes:
         - name: nexus-data
-          hostPath:
-            path: /vagrant/nexus-data
+          persistentVolumeClaim:
+            claimName: nexus-sc-pvc
 ---
 kind: Service
 apiVersion: v1
@@ -40,7 +37,7 @@ metadata:
   labels:
     app: nexus3
   name: nexus3
-  namespace: nexus
+  namespace: default
 spec:
   type: NodePort
   ports:

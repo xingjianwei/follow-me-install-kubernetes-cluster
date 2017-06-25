@@ -17,7 +17,7 @@ spec:
       restartPolicy: Always
       serviceAccountName: ingress
       containers:
-      - image: 172.16.210.101:443/public/traefik
+      - image: 172.16.210.101/public/traefik
         name: traefik-ingress-lb
         resources:
           limits:

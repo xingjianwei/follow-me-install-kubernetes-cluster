@@ -104,7 +104,7 @@ spec:
       restartPolicy: Always
       serviceAccountName: ingress
       containers:
-      - image: 172.16.210.101:443/public/traefik
+      - image: 172.16.210.101/public/traefik
         name: traefik-ingress-lb
         resources:
           limits:
@@ -160,15 +160,21 @@ spec:
           servicePort: web
 ```
 
+## 配置边缘节点
+
+`kubectl label nodes 172.16.210.101 edgenode=true`
+
+上面配置文件启动的traefik使用的是deployment，只启动了一个pod，无法保证高可用（即需要将pod固定在某一台主机上，这样才能对外提供一个唯一的访问地址），将来现在使用了keepalived就可以通过VIP来访问traefik，同时启动多个traefik的pod保证高可用。
+
 配置完成后就可以启动treafik ingress了。
 
 ```
 kubectl create -f .
 ```
 
-我查看到traefik的pod在`172.20.0.115`这台节点上启动了。
+我查看到traefik的pod在`172.16.210.103`这台节点上启动了。
 
-访问该地址`http://172.20.0.115:8580/`将可以看到dashboard。
+访问该地址`http://172.16.210.103:8580/`将可以看到dashboard。
 
 ![traefik-dashboard](../images/traefik-dashboard.jpg)
 
@@ -179,32 +185,8 @@ kubectl create -f .
 在集群的任意一个节点上执行。假如现在我要访问nginx的"/"路径。
 
 ```bash
-$ curl -H Host:traefik.nginx.io http://172.20.0.115/
-<!DOCTYPE html>
-<html>
-<head>
-<title>Welcome to nginx!</title>
-<style>
-    body {
-        width: 35em;
-        margin: 0 auto;
-        font-family: Tahoma, Verdana, Arial, sans-serif;
-    }
-</style>
-</head>
-<body>
-<h1>Welcome to nginx!</h1>
-<p>If you see this page, the nginx web server is successfully installed and
-working. Further configuration is required.</p>
+$ curl -H Host:traefik.nginx.io http://172.16.210.103/
 
-<p>For online documentation and support please refer to
-<a href="http://nginx.org/">nginx.org</a>.<br/>
-Commercial support is available at
-<a href="http://nginx.com/">nginx.com</a>.</p>
-
-<p><em>Thank you for using nginx.</em></p>
-</body>
-</html>
 ```
 
 如果你需要在kubernetes集群以外访问就需要设置DNS，或者修改本机的hosts文件。
@@ -212,21 +194,13 @@ Commercial support is available at
 在其中加入：
 
 ```
-172.20.0.115 traefik.nginx.io
-172.20.0.115 traefik.frontend.io
+172.16.210.103 nexus.kubenetes.beagledata.local
+172.16.210.103 traefik-ui.local
 ```
 
-所有访问这些地址的流量都会发送给172.20.0.115这台主机，就是我们启动traefik的主机。
+所有访问这些地址的流量都会发送给172.15.210.103这台主机，就是我们启动traefik的主机。
 
 Traefik会解析http请求header里的Host参数将流量转发给Ingress配置里的相应service。
-
-修改hosts后就就可以在kubernetes集群外访问以上两个service，如下图：
-
-![traefik-nginx](../images/traefik-nginx.jpg)
-
-
-
-![traefik-guestbook](../images/traefik-guestbook.jpg)
 
 
 ## 参考
