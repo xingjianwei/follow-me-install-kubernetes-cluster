@@ -1,0 +1,809 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kube-lego
+---
+apiVersion: v1
+metadata:
+  name: kube-lego
+  namespace: kube-lego
+data:
+  # modify this to specify your address
+  lego.email: "xingjw@beagledata.com"
+  # configure letencrypt's production api
+  lego.url: "https://acme-v01.api.letsencrypt.org/directory"
+kind: ConfigMap
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: kube-lego
+  namespace: kube-lego
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: kube-lego
+    spec:
+      containers:
+      - name: kube-lego
+        image: jetstack/kube-lego:0.1.3
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        env:
+        - name: LEGO_EMAIL
+          valueFrom:
+            configMapKeyRef:
+              name: kube-lego
+              key: lego.email
+        - name: LEGO_URL
+          valueFrom:
+            configMapKeyRef:
+              name: kube-lego
+              key: lego.url
+        - name: LEGO_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: LEGO_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nginx-ingress
+---
+apiVersion: v1
+data:
+  proxy-connect-timeout: "15"
+  proxy-read-timeout: "600"
+  proxy-send-imeout: "600"
+  hsts-include-subdomains: "false"
+  body-size: "512m"
+  server-name-hash-bucket-size: "256"
+kind: ConfigMap
+metadata:
+  namespace: nginx-ingress
+  name: nginx
+---
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: nginx
+  namespace: nginx-ingress
+spec:
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - image: gcr.io/google_containers/nginx-ingress-controller:0.8.3
+        name: nginx
+        imagePullPolicy: Always
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 10254
+            scheme: HTTP
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+        ports:
+        - containerPort: 80
+        - containerPort: 443
+        - containerPort: 22
+        args:
+        - /nginx-ingress-controller
+        - --default-backend-service=nginx-ingress/default-http-backend
+        - --nginx-configmap=nginx-ingress/nginx
+        - --tcp-services-configmap=nginx-ingress/tcp-ports
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: default-http-backend
+  namespace: nginx-ingress
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: default-http-backend
+    spec:
+      containers:
+      - name: default-http-backend
+        # Any image is permissable as long as:
+        # 1. It serves a 404 page at /
+        # 2. It serves 200 on a /healthz endpoint
+        image: gcr.io/google_containers/defaultbackend:1.0
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            cpu: 10m
+            memory: 20Mi
+          requests:
+            cpu: 10m
+            memory: 20Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: default-http-backend
+  namespace: nginx-ingress
+spec:
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+  selector:
+    app: default-http-backend
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  namespace: nginx-ingress
+  annotations:
+    service.beta.kubernetes.io/external-traffic: "OnlyLocal"
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 172.16.210.101
+  ports:
+  - port: 80
+    name: http
+  - port: 443
+    name: https
+  - port: 22
+    name: git
+  selector:
+    app: nginx
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tcp-ports
+  namespace: nginx-ingress
+data:
+  22: "gitlab/gitlab:22"
+---
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: gitlab
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gitlab-config
+  namespace: gitlab
+data:
+  external_scheme: https
+  external_hostname: gitlab.gitlab.kubenetes.beagledata.local
+  registry_external_scheme: https
+  registry_external_hostname: registry.gitlab.kubenetes.beagledata.local
+  mattermost_external_scheme: https
+  mattermost_external_hostname: mattermost.gitlab.kubenetes.beagledata.local
+  mattermost_app_uid: aadas
+  postgres_user: gitlab
+  postgres_db: gitlab_production
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gitlab-secrets
+  namespace: gitlab
+data:
+  postgres_password: NDl1ZjNtenMxcWR6NXZnbw==
+  initial_shared_runners_registration_token: NDl1ZjNtenMxcWR6NXZnbw==
+  mattermost_app_secret: NDl1ZjNtenMxcWR6NXZnbw==
+---
+kind: StorageClass
+apiVersion: storage.k8s.io/v1beta1
+metadata:
+  name: fast
+  namespace: gitlab
+  annotations:
+    storageclass.beta.kubernetes.io/is-default-class: "true"
+  labels:
+    kubernetes.io/cluster-service: "true"
+provisioner: kubernetes.io/gce-pd
+parameters:
+  type: pd-ssd
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: gitlab-redis
+  namespace: gitlab
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: gitlab-redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:3.2.4
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: redis
+          containerPort: 6379
+        volumeMounts:
+        - mountPath: /var/lib/redis
+          name: data
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: gitlab-redis-storage
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitlab-redis-storage
+  namespace: gitlab
+  annotations:
+    volume.beta.kubernetes.io/storage-class: fast
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitlab-redis
+  namespace: gitlab
+  labels:
+    name: gitlab-redis
+spec:
+  selector:
+    name: gitlab-redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gitlab-postgresql-initdb
+  namespace: gitlab
+data:
+  01_create_mattermost_production.sql: |
+    CREATE DATABASE mattermost_production WITH OWNER gitlab;
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: gitlab-postgresql
+  namespace: gitlab
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: gitlab-postgresql
+    spec:
+      containers:
+      - name: postgresql
+        image: postgres:9.6.1
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            configMapKeyRef:
+              name: gitlab-config
+              key: postgres_user
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: gitlab-secrets
+              key: postgres_password
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: gitlab-config
+              key: postgres_db
+        - name: DB_EXTENSION
+          value: pg_trgm
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        ports:
+        - name: postgres
+          containerPort: 5432
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: data
+        - mountPath: /docker-entrypoint-initdb.d
+          name: initdb
+          readOnly: true
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -h
+            - localhost
+            - -U
+            - postgres
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -h
+            - localhost
+            - -U
+            - postgres
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: gitlab-postgresql-storage
+      - name: initdb
+        configMap:
+          name: gitlab-postgresql-initdb
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitlab-postgresql-storage
+  namespace: gitlab
+  annotations:
+    volume.beta.kubernetes.io/storage-class: fast
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 30Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitlab-postgresql
+  namespace: gitlab
+  labels:
+    name: gitlab-postgresql
+spec:
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+  selector:
+    name: gitlab-postgresql
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitlab-config-storage
+  namespace: gitlab
+  annotations:
+    volume.beta.kubernetes.io/storage-class: fast
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: gitlab
+  namespace: gitlab
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: gitlab
+        app: gitlab
+    spec:
+      containers:
+      - name: gitlab
+        image: gitlab/gitlab-ce:9.1.2-ce.0
+        imagePullPolicy: IfNotPresent
+        command: ["/bin/bash", "-c",
+          "sed -i \"s/environment ({'GITLAB_ROOT_PASSWORD' => initial_root_password }) if initial_root_password/environment ({'GITLAB_ROOT_PASSWORD' => initial_root_password, 'GITLAB_SHARED_RUNNERS_REGISTRATION_TOKEN' => node['gitlab']['gitlab-rails']['initial_shared_runners_registration_token'] })/g\" /opt/gitlab/embedded/cookbooks/gitlab/recipes/database_migrations.rb && exec /assets/wrapper"]
+        env:
+        - name: GITLAB_EXTERNAL_SCHEME
+          valueFrom:
+            configMapKeyRef:
+              name: gitlab-config
+              key: external_scheme
+        - name: GITLAB_EXTERNAL_HOSTNAME
+          valueFrom:
+            configMapKeyRef:
+              name: gitlab-config
+              key: external_hostname
+        - name: GITLAB_REGISTRY_EXTERNAL_SCHEME
+          valueFrom:
+            configMapKeyRef:
+              name: gitlab-config
+              key: registry_external_scheme
+        - name: GITLAB_REGISTRY_EXTERNAL_HOSTNAME
+          valueFrom:
+            configMapKeyRef:
+              name: gitlab-config
+              key: registry_external_hostname
+        - name: GITLAB_MATTERMOST_EXTERNAL_SCHEME
+          valueFrom:
+            configMapKeyRef:
+              name: gitlab-config
+              key: mattermost_external_scheme
+        - name: GITLAB_MATTERMOST_EXTERNAL_HOSTNAME
+          valueFrom:
+            configMapKeyRef:
+              name: gitlab-config
+              key: mattermost_external_hostname
+        - name: POSTGRES_USER
+          valueFrom:
+            configMapKeyRef:
+              name: gitlab-config
+              key: postgres_user
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: gitlab-secrets
+              key: postgres_password
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: gitlab-config
+              key: postgres_db
+        - name: GITLAB_INITIAL_SHARED_RUNNERS_REGISTRATION_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: gitlab-secrets
+              key: initial_shared_runners_registration_token
+        - name: MATTERMOST_APP_UID
+          valueFrom:
+            configMapKeyRef:
+              name: gitlab-config
+              key: mattermost_app_uid
+        - name: MATTERMOST_APP_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: gitlab-secrets
+              key: mattermost_app_secret
+        - name: GITLAB_OMNIBUS_CONFIG
+          value: |
+            external_url "#{ENV['GITLAB_EXTERNAL_SCHEME']}://#{ENV['GITLAB_EXTERNAL_HOSTNAME']}"
+            registry_external_url "#{ENV['GITLAB_REGISTRY_EXTERNAL_SCHEME']}://#{ENV['GITLAB_REGISTRY_EXTERNAL_HOSTNAME']}"
+            mattermost_external_url "#{ENV['GITLAB_MATTERMOST_EXTERNAL_SCHEME']}://#{ENV['GITLAB_MATTERMOST_EXTERNAL_HOSTNAME']}"
+
+            gitlab_rails['initial_shared_runners_registration_token'] = ENV['GITLAB_INITIAL_SHARED_RUNNERS_REGISTRATION_TOKEN']
+
+            nginx['enable'] = false
+            registry_nginx['enable'] = false
+            mattermost_nginx['enable'] = false
+
+            gitlab_workhorse['listen_network'] = 'tcp'
+            gitlab_workhorse['listen_addr'] = '0.0.0.0:8005'
+
+            mattermost['service_address'] = '0.0.0.0'
+            mattermost['service_port'] = '8065'
+
+            registry['registry_http_addr'] = '0.0.0.0:8105'
+
+            postgresql['enable'] = false
+            gitlab_rails['db_host'] = 'gitlab-postgresql'
+            gitlab_rails['db_password'] = ENV['POSTGRES_PASSWORD']
+            gitlab_rails['db_username'] = ENV['POSTGRES_USER']
+            gitlab_rails['db_database'] = ENV['POSTGRES_DB']
+
+            redis['enable'] = false
+            gitlab_rails['redis_host'] = 'gitlab-redis'
+
+            mattermost['file_directory'] = '/gitlab-data/mattermost';
+            mattermost['sql_driver_name'] = 'postgres';
+            mattermost['sql_data_source'] = "user=#{ENV['POSTGRES_USER']} host=gitlab-postgresql port=5432 dbname=mattermost_production password=#{ENV['POSTGRES_PASSWORD']} sslmode=disable";
+            mattermost['gitlab_enable'] = true;
+            mattermost['gitlab_secret'] = ENV['MATTERMOST_APP_SECRET'];
+            mattermost['gitlab_id'] = ENV['MATTERMOST_APP_UID'];
+            mattermost['gitlab_scope'] = '';
+            mattermost['gitlab_auth_endpoint'] = "#{ENV['GITLAB_EXTERNAL_SCHEME']}://#{ENV['GITLAB_EXTERNAL_HOSTNAME']}/oauth/authorize";
+            mattermost['gitlab_token_endpoint'] = "#{ENV['GITLAB_EXTERNAL_SCHEME']}://#{ENV['GITLAB_EXTERNAL_HOSTNAME']}/oauth/token";
+            mattermost['gitlab_user_api_endpoint'] = "#{ENV['GITLAB_EXTERNAL_SCHEME']}://#{ENV['GITLAB_EXTERNAL_HOSTNAME']}/api/v3/user"
+
+            manage_accounts['enable'] = true
+            manage_storage_directories['manage_etc'] = false
+
+            gitlab_shell['auth_file'] = '/gitlab-data/ssh/authorized_keys'
+            git_data_dir '/gitlab-data/git-data'
+            gitlab_rails['shared_path'] = '/gitlab-data/shared'
+            gitlab_rails['uploads_directory'] = '/gitlab-data/uploads'
+            gitlab_ci['builds_directory'] = '/gitlab-data/builds'
+            gitlab_rails['registry_path'] = '/gitlab-registry'
+            gitlab_rails['trusted_proxies'] = ["10.0.0.0/8","172.16.0.0/12","192.168.0.0/16"]
+
+            prometheus['listen_address'] = '0.0.0.0:9090'
+            postgres_exporter['enable'] = true
+            postgres_exporter['env'] = {
+              'DATA_SOURCE_NAME' => "user=#{ENV['POSTGRES_USER']} host=gitlab-postgresql port=5432 dbname=#{ENV['POSTGRES_DB']} password=#{ENV['POSTGRES_PASSWORD']} sslmode=disable"
+            }
+            redis_exporter['enable'] = true
+            redis_exporter['flags'] = {
+              'redis.addr' => "gitlab-redis:6379",
+            }
+
+        - name: GITLAB_POST_RECONFIGURE_CODE
+          value: |
+            Doorkeeper::Application.where(uid: ENV["MATTERMOST_APP_UID"]).first_or_create(
+              name: "GitLab Mattermost",
+              secret: ENV["MATTERMOST_APP_SECRET"],
+              redirect_uri: "#{ENV["GITLAB_MATTERMOST_EXTERNAL_SCHEME"]}://#{ENV["GITLAB_MATTERMOST_EXTERNAL_HOSTNAME"]}/signup/gitlab/complete\r\n#{ENV["GITLAB_MATTERMOST_EXTERNAL_SCHEME"]}://#{ENV["GITLAB_MATTERMOST_EXTERNAL_HOSTNAME"]}/login/gitlab/complete")
+
+            PrometheusService.where(template: true).first_or_create(
+              active: true, api_url: "http://localhost:9090")
+
+            KubernetesService.where(template: true).first_or_create(
+              active: true,
+              api_url: "https://#{ENV["KUBERNETES_SERVICE_HOST"]}:#{ENV["KUBERNETES_SERVICE_PORT"]}",
+              token: File.read("/var/run/secrets/kubernetes.io/serviceaccount/token"),
+              ca_pem: File.read("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"))
+
+        - name: GITLAB_POST_RECONFIGURE_SCRIPT
+          value: |
+            /opt/gitlab/bin/gitlab-rails runner -e production "$GITLAB_POST_RECONFIGURE_CODE"
+        ports:
+        - name: registry
+          containerPort: 8105
+        - name: mattermost
+          containerPort: 8065
+        - name: workhorse
+          containerPort: 8005
+        - name: ssh
+          containerPort: 22
+        - name: prometheus
+          containerPort: 9090
+        volumeMounts:
+        - name: config
+          mountPath: /etc/gitlab
+        - name: data
+          mountPath: /gitlab-data
+        - name: registry
+          mountPath: /gitlab-registry
+        livenessProbe:
+          httpGet:
+            path: /help
+            port: 8005
+          initialDelaySeconds: 180
+          timeoutSeconds: 15
+        readinessProbe:
+          httpGet:
+            path: /help
+            port: 8005
+          initialDelaySeconds: 15
+          timeoutSeconds: 1
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: gitlab-rails-storage
+      - name: registry
+        persistentVolumeClaim:
+          claimName: gitlab-registry-storage
+      - name: config
+        persistentVolumeClaim:
+          claimName: gitlab-config-storage
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitlab-rails-storage
+  namespace: gitlab
+  annotations:
+    volume.beta.kubernetes.io/storage-class: fast
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 30Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitlab-registry-storage
+  namespace: gitlab
+  annotations:
+    volume.beta.kubernetes.io/storage-class: fast
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 30Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitlab
+  namespace: gitlab
+  labels:
+    name: gitlab
+spec:
+  selector:
+    name: gitlab
+  ports:
+    - name: ssh
+      port: 22
+      targetPort: ssh
+    - name: mattermost
+      port: 8065
+      targetPort: mattermost
+    - name: registry
+      port: 8105
+      targetPort: registry
+    - name: workhorse
+      port: 8005
+      targetPort: workhorse
+    - name: prometheus
+      port: 9090
+      targetPort: prometheus
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gitlab-runner-scripts
+  namespace: gitlab
+data:
+  entrypoint: |
+    #!/bin/bash
+
+    set -xe
+
+    cp /scripts/config.toml /etc/gitlab-runner/
+
+    # Register the runner
+    /entrypoint register --non-interactive \
+      --url http://gitlab.gitlab:8005/ci \
+      --executor kubernetes \
+      --kubernetes-privileged=true
+
+    # Start the runner
+    /entrypoint run --user=gitlab-runner \
+      --working-directory=/home/gitlab-runner
+  config.toml: |
+    concurrent = 10
+    check_interval = 1
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: gitlab-runner-docker
+  namespace: gitlab
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: docker-runner
+        app: gitlab-runner
+    spec:
+      containers:
+      - name: gitlab-runner-docker
+        image: gitlab/gitlab-runner:alpine-v9.0.0
+        command: ["/bin/bash", "/scripts/entrypoint"]
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: REGISTRATION_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: gitlab-secrets
+              key: initial_shared_runners_registration_token
+        resources:
+          limits:
+            memory: 500Mi
+            cpu: 600m
+          requests:
+            memory: 500Mi
+            cpu: 600m
+        volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+        - name: var-run-docker-sock
+          mountPath: /var/run/docker.sock
+      volumes:
+      - name: var-run-docker-sock
+        hostPath:
+          path: /var/run/docker.sock
+      - name: scripts
+        configMap:
+          name: gitlab-runner-scripts
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: gitlab
+  namespace: gitlab
+  labels:
+    name: gitlab
+  annotations:
+    kubernetes.io/tls-acme: "true"
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  tls:
+  - hosts:
+    - gitlab.gitlab.kubenetes.beagledata.local
+    - registry.gitlab.kubenetes.beagledata.local
+    - mattermost.gitlab.kubenetes.beagledata.local
+    - prometheus.gitlab.kubenetes.beagledata.local
+    secretName: gitlab-tls
+  rules:
+  - host: gitlab.gitlab.kubenetes.beagledata.local
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: gitlab
+          servicePort: 8005
+  - host: registry.gitlab.kubenetes.beagledata.local
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: gitlab
+          servicePort: 8105
+  - host: mattermost.gitlab.kubenetes.beagledata.local
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: gitlab
+          servicePort: 8065
+  - host: prometheus.gitlab.kubenetes.beagledata.local
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: gitlab
+          servicePort: 9090
+---
+---
