@@ -3,13 +3,6 @@ kind: Ingress
 metadata:
   name: traefik-ingress
 spec:
-  tls:
-  - hosts:
-    - gitlab.gitlab.kubenetes.beagledata.local
-    - registry.gitlab.kubenetes.beagledata.local
-    - mattermost.gitlab.kubenetes.beagledata.local
-    - prometheus.gitlab.kubenetes.beagledata.local
-    secretName: gitlab-tls
   rules:
   - host: nexus.kubenetes.beagledata.local
     http:
