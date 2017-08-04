@@ -4,7 +4,7 @@ metadata:
   name: gitlab-config
 data:
   external_scheme: http
-  external_hostname: gitlab.gitlab.kubenetes.beagledata.local
+  external_hostname: gitlab.beagledata.com
   registry_external_scheme: http
   registry_external_hostname: registry.gitlab.kubenetes.beagledata.local
   mattermost_external_scheme: http
@@ -297,7 +297,7 @@ spec:
             gitlab_rails['shared_path'] = '/gitlab-data/shared'
             gitlab_rails['uploads_directory'] = '/gitlab-data/uploads'
             gitlab_ci['builds_directory'] = '/gitlab-data/builds'
-            gitlab_rails['registry_path'] = '/gitlab-registry'
+            gitlab_rails['registry_path'] = '/gitlab-data/gitlab-registry'
             gitlab_rails['backup_path'] = '/gitlab-data/backups'
             gitlab_rails['trusted_proxies'] = ["10.0.0.0/8","172.16.0.0/12","192.168.0.0/16"]
 
@@ -346,8 +346,6 @@ spec:
           mountPath: /etc/gitlab
         - name: data
           mountPath: /gitlab-data
-        - name: registry
-          mountPath: /gitlab-registry
         livenessProbe:
           httpGet:
             path: /help
@@ -364,9 +362,6 @@ spec:
       - name: data
         persistentVolumeClaim:
           claimName: gitlab-rails-storage
-      - name: registry
-        persistentVolumeClaim:
-          claimName: gitlab-registry-storage
       - name: config
         persistentVolumeClaim:
           claimName: gitlab-config-storage

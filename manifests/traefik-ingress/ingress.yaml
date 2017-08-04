@@ -11,6 +11,20 @@ spec:
         backend:
           serviceName: nexus3
           servicePort: 80
+  - host: gitlab.kubenetes.beagledata.local
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: gitlab
+          servicePort: 8005
+  - host: gitlab.beagledata.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: gitlab
+          servicePort: 8005        
   - host: gitlab.gitlab.kubenetes.beagledata.local
     http:
       paths:
