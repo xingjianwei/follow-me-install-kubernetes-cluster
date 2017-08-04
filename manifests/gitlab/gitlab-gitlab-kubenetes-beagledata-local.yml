@@ -298,6 +298,7 @@ spec:
             gitlab_rails['uploads_directory'] = '/gitlab-data/uploads'
             gitlab_ci['builds_directory'] = '/gitlab-data/builds'
             gitlab_rails['registry_path'] = '/gitlab-registry'
+            gitlab_rails['backup_path'] = '/gitlab-data/backups'
             gitlab_rails['trusted_proxies'] = ["10.0.0.0/8","172.16.0.0/12","192.168.0.0/16"]
 
             prometheus['listen_address'] = '0.0.0.0:9090'
