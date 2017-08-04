@@ -3,6 +3,36 @@
 tags: gitlab
 
 # 使用pods部署gitlab
+
+[参考文档](https://gitlab.com/gitlab-org/kubernetes-gitlab-demo)
+
+## 配置文件
+```
+GITLAB_LEGO_EMAIL=xingjw@beagledata.com \
+GITLAB_GKE_IP=172.16.210.101 \
+GITLAB_GKE_DOMAIN=gitlab.kubenetes.beagledata.local \
+bash generate.bash
+```
+自动生成文件：`manifests/gitlab/gitlab-gitlab-kubenetes-beagledata-local.yml`
+
+修改文件：prometheus设置、ingress设置、lego设置、
+
+## 创建ceph pool：kube-gitlab
+
+kube pool已经在安装nexus时创建。
+```
+# 创建存储池
+rados mkpool kube-gitlab
+```
+
+根据你自己环境中部署的service的名字和端口自行修改`manifests/traefik-ingress/ingress.yaml`，有新service增加时，修改该文件后可以使用`kubectl replace -f ingress.yaml`来更新。
+
+`kubectl apply -f manifests/gitlab/gitlab-gitlab-kubenetes-beagledata-local.yml`
+
+# 参考文档内容
+
+This work is based  partially on: https://github.com/lwolf/kubernetes-gitlab/
+
 Manifests to deploy GitLab on Kubernetes 
 
 Installation process described in [blog](http://blog.lwolf.org/post/how-to-easily-deploy-gitlab-on-kubernetes/)

@@ -51,7 +51,7 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 ```
 
-**创建名为`traefik-ingress`的ingress**，文件名traefik.yaml
+**创建名为`traefik-ingress`的ingress**，文件名ingress.yaml
 
 ```yaml
 apiVersion: extensions/v1beta1
@@ -78,7 +78,7 @@ spec:
 
 这其中的`backend`中要配置default namespace中启动的service名字。`path`就是URL地址后的路径，如traefik.frontend.io/path，service将会接受path这个路径，host最好使用service-name.filed1.filed2.domain-name这种类似主机名称的命名方式，方便区分服务。
 
-根据你自己环境中部署的service的名字和端口自行修改，有新service增加时，修改该文件后可以使用`kubectl replace -f traefik.yaml`来更新。
+根据你自己环境中部署的service的名字和端口自行修改，有新service增加时，修改该文件后可以使用`kubectl replace -f ingress.yaml`来更新。
 
 我们现在集群中已经有两个service了，一个是nginx，另一个是官方的`guestbook`例子。
 
@@ -163,6 +163,8 @@ spec:
 ## 配置边缘节点
 
 `kubectl label nodes 172.16.210.101 edgenode=true`
+
+因为treafik.yaml中nodeSelector设置为edgenode，所以会在172.16.210.101节点上启动。
 
 上面配置文件启动的traefik使用的是deployment，只启动了一个pod，无法保证高可用（即需要将pod固定在某一台主机上，这样才能对外提供一个唯一的访问地址），将来现在使用了keepalived就可以通过VIP来访问traefik，同时启动多个traefik的pod保证高可用。
 

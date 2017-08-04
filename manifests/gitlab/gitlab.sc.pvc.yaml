@@ -1,0 +1,83 @@
+kind: StorageClass
+apiVersion: storage.k8s.io/v1beta1
+metadata:
+  name: kuber-rbd-gitlab
+  annotations:
+    storageclass.beta.kubernetes.io/is-default-class: "true"
+  labels:
+    kubernetes.io/cluster-service: "true"
+provisioner: kubernetes.io/rbd
+parameters:
+  monitors: 172.16.210.121:6789
+  adminId: admin
+  adminSecretName: ceph-secret
+  adminSecretNamespace: "kube-system"
+  pool: kube-gitlab
+  userId: admin
+  userSecretName: ceph-secret
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitlab-redis-storage
+  annotations:
+    volume.beta.kubernetes.io/storage-class: kuber-rbd-gitlab
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitlab-postgresql-storage
+  annotations:
+    volume.beta.kubernetes.io/storage-class: kuber-rbd-gitlab
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitlab-config-storage
+  annotations:
+    volume.beta.kubernetes.io/storage-class: kuber-rbd-gitlab
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitlab-rails-storage
+  annotations:
+    volume.beta.kubernetes.io/storage-class: kuber-rbd-gitlab
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitlab-registry-storage
+  annotations:
+    volume.beta.kubernetes.io/storage-class: kuber-rbd-gitlab
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Gi
+---

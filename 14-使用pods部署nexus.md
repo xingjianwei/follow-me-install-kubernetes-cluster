@@ -4,12 +4,15 @@ tags: nexus
 
 # 使用pods部署nexus
 
-## 创建块设备
+## 创建存储池
 
 ```
 # 创建存储池
 rados mkpool kube
-# 创建 image
+```
+k8s会直接使用kube pool，以下命令无需执行：
+```
+# 创建 image (10GB)
 rbd create kube --size 10240 -p kube
 # 关闭不支持特性
 rbd feature disable kube exclusive-lock, object-map, fast-diff, deep-flatten -p kube

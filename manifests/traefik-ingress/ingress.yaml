@@ -3,6 +3,13 @@ kind: Ingress
 metadata:
   name: traefik-ingress
 spec:
+  tls:
+  - hosts:
+    - gitlab.gitlab.kubenetes.beagledata.local
+    - registry.gitlab.kubenetes.beagledata.local
+    - mattermost.gitlab.kubenetes.beagledata.local
+    - prometheus.gitlab.kubenetes.beagledata.local
+    secretName: gitlab-tls
   rules:
   - host: nexus.kubenetes.beagledata.local
     http:
@@ -11,4 +18,32 @@ spec:
         backend:
           serviceName: nexus3
           servicePort: 80
-
+  - host: gitlab.gitlab.kubenetes.beagledata.local
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: gitlab
+          servicePort: 8005
+  - host: registry.gitlab.kubenetes.beagledata.local
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: gitlab
+          servicePort: 8105
+  - host: mattermost.gitlab.kubenetes.beagledata.local
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: gitlab
+          servicePort: 8065
+  - host: prometheus.gitlab.kubenetes.beagledata.local
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: gitlab
+          servicePort: 9090
+---
