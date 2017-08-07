@@ -42,10 +42,7 @@ spec:
         imagePullPolicy: IfNotPresent
         env:
         - name: REGISTRATION_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: gitlab-secrets
-              key: initial_shared_runners_registration_token
+          value: "P9HBJsEY11az3isEy5yp"
         resources:
           limits:
             memory: 500Mi
