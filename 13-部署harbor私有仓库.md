@@ -294,16 +294,17 @@ $
 
 ``` bash
 $ docker login 172.16.210.101
-Username: admin
-Password:
+Username: public
+Password:Bxx
 ```
-
+退出登录：`docker logout`
 认证信息自动保存到 `~/.docker/config.json` 文件。
 
-## docker macosx客户端登陆
+## docker macosx客户端直接下载
 
-在Docker启动时设置参数 "--insecure-registry 172.16.210.101"
-
+可以直接在Docker启动时设置参数 "--insecure-registry 172.16.210.101"
+测试：
+`docker pull 172.16.210.101/public/nginx:1.7.9`
 
 ## 上传和下载镜像
 ```
