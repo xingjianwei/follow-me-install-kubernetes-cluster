@@ -29,6 +29,10 @@ rados mkpool kube-gitlab
 
 `kubectl apply -f manifests/gitlab/gitlab-gitlab-kubenetes-beagledata-local.yml`
 
+
+有新service增加时，修改ingress.yaml文件后可以使用`kubectl replace -f  ~/github/xingjianwei/follow-me-install-kubernetes-cluster/manifests/traefik-ingress/ingress.yaml`来更新。
+
+
 # 参考文档内容
 
 This work is based  partially on: https://github.com/lwolf/kubernetes-gitlab/

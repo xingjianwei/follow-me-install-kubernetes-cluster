@@ -53,4 +53,18 @@ spec:
         backend:
           serviceName: gitlab
           servicePort: 9090
+  - host: nextcloud.beagledata.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: owncloud
+          servicePort: 9000
+  - host: nextcloud.kubenetes.beagledata.local
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: owncloud
+          servicePort: 9000
 ---

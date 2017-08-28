@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nextcloud-postgresql
+  labels:
+    name: nextcloud-postgresql
+spec:
+  containers:
+    - name: nextcloud-postgresql
+      image: 172.16.210.101/public/postgres:9.6.3
+      env:
+        - name: DB_USER
+          value: nextcloud
+        - name: DB_PASS
+          value: password
+        - name: DB_NAME
+          value: nextcloud_db
+      ports:
+        - containerPort: 5432
+          protocol: TCP
+      volumeMounts:
+        - mountPath: /var/lib/postgresql
+          name: pgdata
+      livenessProbe:
+        tcpSocket:
+          port: 5432
+        initialDelaySeconds: 30
+        timeoutSeconds: 5
+  volumes:
+    - name: pgdata
+      persistentVolumeClaim:
+        claimName: nextcloud-pg-sc-pvc

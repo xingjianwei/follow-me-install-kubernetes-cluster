@@ -1,11 +1,12 @@
 <!-- toc -->
 
-tags: nexus
+tags: nextcloud
 
-# 使用pods部署nexus
+# 使用pods部署 nextcloud
 
 ## 创建存储池
 
+如果已经在nexus部署时执行过，则直接转到[创建 PVC](#jump1)：
 ```
 # 创建存储池
 rados mkpool kube
@@ -21,8 +22,6 @@ rbd map kube --name client.admin -p kube
 # 格式化块设备(单节点即可)
 mkfs.ext4 /dev/rbd0
 ```
-
-
 
 ## Use Ceph Authentication Secret
 
@@ -43,23 +42,18 @@ QVFBTWdYaFZ3QkNlRGhBQTlubFBhRnlmVVNhdEdENGRyRldEdlE9PQ==
 ## 创建 StorageClass
 `kubectl create -f  ~/github/xingjianwei/follow-me-install-kubernetes-cluster/manifests/cephrbd/ceph-storage-kube_rbd.yml`
 
-## 创建 PVC
-`kubectl create -f ~/github/xingjianwei/follow-me-install-kubernetes-cluster/manifests/cephrbd/nexus.sc.pvc.yml`
 
-## image修改
-```
-git clone https://github.com/sonatype/docker-nexus3.git
-```
+## <span id="jump1">创]建 PVC</span>
 
-修改`Dockerfile`，去掉默认的`user nexus`，改由`root`用户启动。否则没有权限使用pvc写入文件。
+`kubectl create -f ~/github/xingjianwei/follow-me-install-kubernetes-cluster/manifests/cephrbd/nextcloud.sc.pvc.yml`
 
-## 创建 nexus
-使用nexus-builder.yaml文件进行安装：
-`kubectl create -f ~/github/xingjianwei/follow-me-install-kubernetes-cluster/manifests/nexus/nexus-builder.yaml`
+## 创建 nextcloud
+使用nextcloud目录下文件进行安装：
+`kubectl create -f ~/github/xingjianwei/follow-me-install-kubernetes-cluster/manifests/nextcloud/`
 
 安装完成后，查找对应端口进行访问：
-`kubectl describe svc -n default nexus3 | grep 'NodePort:'`
+`kubectl describe svc -n default nextcloud`
 
-根据上面的地址打开用户界面。点击右上角Sign in登陆，默认账号admin，密码admin123。
+根据上面的地址打开用户界面。点击右上角Sign in登陆，默认账号admin，密码password。
 
 有新service增加时，修改ingress.yaml文件后可以使用`kubectl replace -f  ~/github/xingjianwei/follow-me-install-kubernetes-cluster/manifests/traefik-ingress/ingress.yaml`来更新。
