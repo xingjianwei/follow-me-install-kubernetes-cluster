@@ -42,8 +42,7 @@ spec:
           value: nextcloud_db
 
       ports:
-        - name: php-fpm
-          containerPort: 80
+        - containerPort: 80
           protocol: TCP
       volumeMounts:
         - mountPath: /var/lib/nextcloud

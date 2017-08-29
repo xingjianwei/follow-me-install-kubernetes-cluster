@@ -5,9 +5,9 @@ metadata:
   labels:
     name: owncloud
 spec:
+  type: NodePort
   ports:
-    - name: php-fpm
-      port: 9000
+    - port: 9000
       targetPort: 80
       protocol: TCP
   selector:
