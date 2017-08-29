@@ -51,9 +51,16 @@ QVFBTWdYaFZ3QkNlRGhBQTlubFBhRnlmVVNhdEdENGRyRldEdlE9PQ==
 使用nextcloud目录下文件进行安装：
 `kubectl create -f ~/github/xingjianwei/follow-me-install-kubernetes-cluster/manifests/nextcloud/`
 
-安装完成后，查找对应端口进行访问：
-`kubectl describe svc -n default nextcloud`
-
-根据上面的地址打开用户界面。点击右上角Sign in登陆，默认账号admin，密码password。
-
+进入容器：
+```
+mkdir /var/lib/nextcloud/data
+chown -R www-data:www-data /var/lib/nextcloud/data
+```
+根据上面的地址打开用户界面，进行初始设置创建用户和数据库。
+```
+nextcloud
+password
+nextcloud_db
+nextcloud-postgresql:5432
+```
 有新service增加时，修改ingress.yaml文件后可以使用`kubectl replace -f  ~/github/xingjianwei/follow-me-install-kubernetes-cluster/manifests/traefik-ingress/ingress.yaml`来更新。

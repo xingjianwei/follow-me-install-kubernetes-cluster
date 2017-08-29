@@ -1,14 +1,13 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: owncloud
+  name: nextcloud
   labels:
-    name: owncloud
+    name: nextcloud
 spec:
-  type: NodePort
   ports:
     - port: 9000
       targetPort: 80
       protocol: TCP
   selector:
-    name: owncloud
+    name: nextcloud

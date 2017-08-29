@@ -58,13 +58,13 @@ spec:
       paths:
       - path: /
         backend:
-          serviceName: owncloud
+          serviceName: nextcloud
           servicePort: 9000
   - host: nextcloud.kubenetes.beagledata.local
     http:
       paths:
       - path: /
         backend:
-          serviceName: owncloud
+          serviceName: nextcloud
           servicePort: 9000
 ---
