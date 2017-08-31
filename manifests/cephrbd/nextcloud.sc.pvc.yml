@@ -14,7 +14,7 @@ spec:
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: nextcloud-pg-sc-pvc
+  name: nextcloud-mysql-sc-pvc
   annotations: 
     volume.beta.kubernetes.io/storage-class: kuber-rbd
 spec:
@@ -22,4 +22,69 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 100Gi
+      storage: 100Gi      
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: nextcloud-config-sc-pvc
+  annotations: 
+    volume.beta.kubernetes.io/storage-class: kuber-rbd
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: nextcloud-apps2-sc-pvc
+  annotations: 
+    volume.beta.kubernetes.io/storage-class: kuber-rbd
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: nextcloud-themes-sc-pvc
+  annotations: 
+    volume.beta.kubernetes.io/storage-class: kuber-rbd
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: nextcloud-solr-sc-pvc
+  annotations: 
+    volume.beta.kubernetes.io/storage-class: kuber-rbd
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 200Gi
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: nextcloud-redis-sc-pvc
+  annotations: 
+    volume.beta.kubernetes.io/storage-class: kuber-rbd
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi                        

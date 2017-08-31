@@ -48,6 +48,8 @@ QVFBTWdYaFZ3QkNlRGhBQTlubFBhRnlmVVNhdEdENGRyRldEdlE9PQ==
 `kubectl create -f ~/github/xingjianwei/follow-me-install-kubernetes-cluster/manifests/cephrbd/nextcloud.sc.pvc.yml`
 
 ## 创建 nextcloud
+wonderfall/nextcloud镜像的配置比较简单。
+[参考文档](https://www.ilanni.com/?p=13238)
 使用nextcloud目录下文件进行安装：
 `kubectl create -f ~/github/xingjianwei/follow-me-install-kubernetes-cluster/manifests/nextcloud/`
 
@@ -64,3 +66,7 @@ nextcloud_db
 nextcloud-postgresql:5432
 ```
 有新service增加时，修改ingress.yaml文件后可以使用`kubectl replace -f  ~/github/xingjianwei/follow-me-install-kubernetes-cluster/manifests/traefik-ingress/ingress.yaml`来更新。
+
+## 重新启动
+修改/var/www/html/config/config.php
+sed "s/'dbtype' => 'pgsql',/'dbtype' => 'pgsql',\n  'installed' => true,/g" config.php

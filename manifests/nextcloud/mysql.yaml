@@ -1,0 +1,38 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: nextcloud-mysqll
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: nextcloud-mysql
+    spec:
+      containers:
+      - name: nextcloud-mysql
+        image: 172.16.210.101/public/mariadb:10
+        env:
+          - name: MYSQL_USER
+            value: nextcloud
+          - name: MYSQL_ROOT_PASSWORD
+            value: password
+          - name: MYSQL_DATABASE
+            value: nextcloud_db
+          - name: MYSQL_PASSWORD
+            value: password
+        ports:
+          - containerPort: 3306
+            protocol: TCP
+        volumeMounts:
+          - mountPath: /var/lib/mysql
+            name: mysqldata
+        livenessProbe:
+          tcpSocket:
+            port: 3306
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+      volumes:
+        - name: mysqldata
+          persistentVolumeClaim:
+            claimName: nextcloud-mysql-sc-pvc

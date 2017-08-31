@@ -59,12 +59,12 @@ spec:
       - path: /
         backend:
           serviceName: nextcloud
-          servicePort: 9000
+          servicePort: 8888
   - host: nextcloud.kubenetes.beagledata.local
     http:
       paths:
       - path: /
         backend:
           serviceName: nextcloud
-          servicePort: 9000
+          servicePort: 8888
 ---

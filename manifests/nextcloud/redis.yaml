@@ -1,0 +1,54 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: nextcloud-redis
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: nextcloud-redis
+    spec:
+      containers:
+      - name: nextcloud-redis
+        image: 172.16.210.101/public/redis:alpine
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: nextcloud-redis
+          containerPort: 6379
+        volumeMounts:
+        - mountPath: /data
+          name: data
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: nextcloud-redis-sc-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nextcloud-redis
+  labels:
+    name: nextcloud-redis
+spec:
+  selector:
+    name: nextcloud-redis
+  ports:
+    - name: nextcloud-redis
+      port: 6379
+      targetPort: nextcloud-redis
+---
