@@ -60,6 +60,13 @@ spec:
         backend:
           serviceName: nextcloud
           servicePort: 8888
+  - host: nextcloud-solr.kubenetes.beagledata.local
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: nextcloud-solr
+          servicePort: 8983
   - host: nextcloud.kubenetes.beagledata.local
     http:
       paths:

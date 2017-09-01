@@ -15,12 +15,8 @@ spec:
       containers:
         - name: nextcloud
           image: 172.16.210.101/public/wonderfall/nextcloud:12.0
-    #      args: ["app:nextcloud"]
           env:
-            - name: UID
-              value: 1000
-             - name: GID
-              value: 1000
+
             - name: UPLOAD_MAX_SIZE
               value: 10G
             - name: APC_SHM_SIZE
@@ -30,13 +26,13 @@ spec:
             - name:  CRON_PERIOD
               value: 15m
             - name: TZ
-              value: Asia/Shanghai
+              value: "Asia/Shanghai"
             - name: ADMIN_USER
               value: admin
             - name: ADMIN_PASSWORD
               value: password
             - name: DOMAIN
-              value: localhost
+              value: 'nextcloud.beagledata.com'
             - name: DB_TYPE
               value: mysql
             - name: DB_NAME
@@ -47,20 +43,20 @@ spec:
               value: password
             - name: DB_HOST
               value: nextcloud-mysql
-
+            - name: UID
+              value: "1000"
+            - name: GID
+              value: "1000"
           ports:
             - containerPort: 8888
               protocol: TCP
           volumeMounts:
             - mountPath: /data
               name: nextdata
-          volumeMounts:
             - mountPath: /config
               name: config
-          volumeMounts:
             - mountPath: /apps2
               name: apps2
-          volumeMounts:
             - mountPath: /nextcloud/themes
               name: themes
           livenessProbe:

@@ -47,6 +47,16 @@ QVFBTWdYaFZ3QkNlRGhBQTlubFBhRnlmVVNhdEdENGRyRldEdlE9PQ==
 
 `kubectl create -f ~/github/xingjianwei/follow-me-install-kubernetes-cluster/manifests/cephrbd/nextcloud.sc.pvc.yml`
 
+## 部署solr
+使用`kubectl create -f ~/github/xingjianwei/follow-me-install-kubernetes-cluster/manifests/nextcloud/mount-pvc.yaml`命令挂载存储。
+在``kubectl exec -it nextcloud-solr-4078660662-tjjm2   /bin/bash`进入容器后，
+```
+mkdir nextant
+chown 8983:8983 nextant
+chown 8983:8983 lost\+found/
+```
+
+
 ## 创建 nextcloud
 wonderfall/nextcloud镜像的配置比较简单。
 [参考文档](https://www.ilanni.com/?p=13238)
@@ -67,6 +77,48 @@ nextcloud-postgresql:5432
 ```
 有新service增加时，修改ingress.yaml文件后可以使用`kubectl replace -f  ~/github/xingjianwei/follow-me-install-kubernetes-cluster/manifests/traefik-ingress/ingress.yaml`来更新。
 
-## 重新启动
+## 修改配置文件
 修改/var/www/html/config/config.php
-sed "s/'dbtype' => 'pgsql',/'dbtype' => 'pgsql',\n  'installed' => true,/g" config.php
+sed "s/'dbtype' => 'mysql',/'dbtype' => 'mysql',\n  'installed' => true,/g" config.php
+
+sed "s/localhost/nextcloud.beagledata.com/g" config.php
+
+配置redis：
+
+sed "s/'memcache.local' => '\\\\\\\\OC\\\\\\\\Memcache\\\\\\\\APCu',/'memcache.distributed' => '\\\\OC\\\\Memcache\\\\Redis',\n  'memcache.locking' => '\\\\OC\\\\Memcache\\\\Redis',\n  'memcache.local' => '\\\\OC\\\\Memcache\\\\APCu',\n  'redis' => array(\n  'host' => 'nextcloud-redis',\n  'port' => 6379,\n  ),\n/g" config.php
+
+## nextant
+部署solr：
+
+
+更改存储nextant目录权限为solr。
+
+进入容器创建core：
+/opt/solr/bin/solr create -c nextant
+
+界面访问：http://nextcloud-solr.kubenetes.beagledata.local/
+
+在“应用”->“tools”中安装nextant会出现无法下载的情况。
+
+可以直接下载安装包：
+
+https://apps.nextcloud.com/apps/nextant
+
+Download the .zip from the appstore, unzip and place this app in nextcloud/apps/ (or clone the github and build the app yourself)
+
+在“管理”->“其它设置”中进行nextant设置：
+```
+http://nextcloud-solr:8983/solr/
+勾选“索引文档”
+```
+Extract the current files from your cloud using the occ nextant:index command
+
+## 重置
+删除 config.php  文件。
+
+重建mysql数据库
+```
+drop databases nextcloud_db;
+create  database nextcloud_db;
+GRANT ALL ON nextcloud_db.* TO 'nextcloud'@'%';
+```

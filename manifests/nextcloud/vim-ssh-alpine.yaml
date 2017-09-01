@@ -1,0 +1,35 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: vim-scp-alpine
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: vim-scp-alpine
+    spec:
+      containers:
+      - name: vim-scp-alpine
+        image: 172.16.210.101/public/vim-scp-alpine:latest
+        #imagePullPolicy: IfNotPresent
+        command: ["sleep", "600000"]
+        volumeMounts:
+        - mountPath: /data
+          name: data
+        livenessProbe:
+          exec:
+            command:
+            - ping
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            command:
+            - ping
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: nextcloud-apps2-sc-pvc

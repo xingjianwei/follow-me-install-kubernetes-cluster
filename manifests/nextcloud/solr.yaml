@@ -11,10 +11,10 @@ spec:
     spec:
       containers:
       - name: nextcloud-solr
-        image: 172.16.210.101/public/solr:alpine
+        image: 172.16.210.101/public/solr:6-alpine
         imagePullPolicy: IfNotPresent
         command: ['docker-entrypoint.sh']
-        args: ["solr-precreate","nextant","solr-foreground"]
+        args: ["solr-precreate","nextant"]
         ports:
         - name: nextcloud-solr
           containerPort: 8983
@@ -23,7 +23,7 @@ spec:
           name: data
         livenessProbe:
           tcpSocket:
-            port: 3306
+            port: 8983
           initialDelaySeconds: 30
           timeoutSeconds: 5
       volumes:
