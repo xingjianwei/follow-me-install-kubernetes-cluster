@@ -94,7 +94,11 @@ sed "s/'memcache.local' => '\\\\\\\\OC\\\\\\\\Memcache\\\\\\\\APCu',/'memcache.d
 更改存储nextant目录权限为solr。
 
 进入容器创建core：
-/opt/solr/bin/solr create -c nextant
+`/opt/solr/bin/solr create -c nextant`
+默认的创建位置是`/opt/solr/server/solr/nextant/`。
+
+
+
 
 界面访问：http://nextcloud-solr.kubenetes.beagledata.local/
 

@@ -32,4 +32,4 @@ spec:
       volumes:
       - name: data
         persistentVolumeClaim:
-          claimName: nextcloud-apps2-sc-pvc
+          claimName: nextcloud-solr-sc-pvc
