@@ -62,8 +62,8 @@ spec:
           livenessProbe:
             tcpSocket:
               port: 8888
-            initialDelaySeconds: 5
-            timeoutSeconds: 1
+            initialDelaySeconds: 30
+            timeoutSeconds: 10
       volumes:
         - name: nextdata
           persistentVolumeClaim:

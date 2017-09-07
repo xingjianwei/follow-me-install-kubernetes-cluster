@@ -74,4 +74,18 @@ spec:
         backend:
           serviceName: nextcloud
           servicePort: 8888
+  - host: jenkins.beagledata.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: jenkins
+          servicePort: 8080
+  - host: kibana-logging.beagledata.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: kibana-logging
+          servicePort: 5601
 ---

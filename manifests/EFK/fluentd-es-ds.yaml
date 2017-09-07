@@ -24,7 +24,7 @@ spec:
       serviceAccountName: fluentd
       containers:
       - name: fluentd-es
-        image: 172.16.210.3:5000/gcr.io/google_containers/fluentd-elasticsearch:1.22
+        image: 172.16.210.101/public/fluentd-elasticsearch:1.22
         command:
           - '/bin/sh'
           - '-c'

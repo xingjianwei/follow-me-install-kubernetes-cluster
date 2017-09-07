@@ -33,4 +33,4 @@ spec:
       volumes:
       - name: data
         persistentVolumeClaim:
-          claimName: nextcloud-solr-sc-pvc
+          claimName: jenkins-sc-pvc
